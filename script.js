@@ -570,12 +570,19 @@ function updateConnectionStates() {
 }
 
 window.openPrereqMap = function() {
-    const modal = document.getElementById('prereq-map-modal');
-    const content = document.getElementById('prereq-map-content');
-    
-    if (modal && content) {
-        content.innerHTML = generatePrereqMapHTML();
-        modal.classList.remove('hidden');
+    try {
+        const modal = document.getElementById('prereq-map-modal');
+        const content = document.getElementById('prereq-map-content');
+        
+        if (modal && content) {
+            content.innerHTML = generatePrereqMapHTML();
+            modal.classList.remove('hidden');
+        } else {
+            console.error("Modal definition not found");
+        }
+    } catch (e) {
+        console.error("Error opening prereq map:", e);
+        showError("Erro ao abrir o mapa: " + e.message);
     }
 };
 
