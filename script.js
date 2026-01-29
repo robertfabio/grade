@@ -147,7 +147,6 @@ const electiveSubjects = [
     { name: "Tópicos Especiais em Sistemas Distribuídos", pre: ["sist_dist"] }
 ];
 
-// Prevent double execution
 if (window.gradeAppInitialized) {
     console.warn('Grade app already initialized');
 } else {
@@ -162,13 +161,15 @@ let currentModalTarget = null;
 let lines = [];
 let dependencyMode = false;
 
-window.showError = function (msg) {
+window.showError = function (msg, title = 'Pré-requisito necessário') {
     const popup = document.getElementById('error-popup');
     const msgEl = document.getElementById('error-msg');
-    if (popup && msgEl) {
+    const titleEl = popup.querySelector('h4');
+    if (popup && msgEl && titleEl) {
+        titleEl.textContent = title;
         msgEl.textContent = msg;
         popup.classList.remove('hidden');
-        setTimeout(() => popup.classList.add('hidden'), 5000);
+        setTimeout(() => popup.classList.add('hidden'), 6000);
     }
 };
 
@@ -251,6 +252,30 @@ function saveState() {
     localStorage.setItem('gradeStateV3', JSON.stringify(state));
 }
 
+function findSubjectById(id) {
+    for (const semData of Object.values(curriculum)) {
+        const subject = semData.subjects.find(sub => sub.id === id);
+        if (subject) return subject;
+    }
+    return null;
+}
+
+function canCompleteSubject(subjectId) {
+    const subject = findSubjectById(subjectId);
+    if (!subject) return true;
+
+    let prerequisites = subject.pre || [];
+
+    if (subject.isOptativa && state.electives[subject.id]) {
+        const elective = electiveSubjects.find(e => e.name === state.electives[subject.id]);
+        if (elective?.pre) prerequisites = elective.pre;
+    }
+
+    if (prerequisites.length === 0) return true;
+
+    return prerequisites.every(preId => state.completed[preId]);
+}
+
 function renderGrid() {
     const container = document.getElementById('grid-container');
     if (!container) return;
@@ -297,10 +322,17 @@ function renderGrid() {
 }
 
 function renderNormalCard(card, sub, isCompleted) {
-    card.className = `subject-card ${isCompleted ? 'completed' : ''}`;
+    const canComplete = canCompleteSubject(sub.id);
+    const isBlocked = !isCompleted && !canComplete;
+    
+    card.className = `subject-card ${isCompleted ? 'completed' : ''} ${isBlocked ? 'blocked' : ''}`;
     let preHtml = '';
     if (sub.pre && sub.pre.length > 0) {
-        preHtml = `<span class="dep-tag icon-text">🔗 ${sub.pre.length} Pré</span>`;
+        const completedPre = sub.pre.filter(preId => state.completed[preId]).length;
+        const preIcon = completedPre === sub.pre.length 
+            ? '<span class="material-symbols-rounded" style="font-size: 14px; vertical-align: middle;">check_circle</span>' 
+            : '<span class="material-symbols-rounded" style="font-size: 14px; vertical-align: middle;">link</span>';
+        preHtml = `<span class="dep-tag icon-text">${preIcon} ${completedPre}/${sub.pre.length} Pré</span>`;
     }
 
     card.innerHTML = `
@@ -324,7 +356,10 @@ function renderOptativaCard(card, sub, isCompleted) {
     }
 
     if (filledName) {
-        card.className = `subject-card ${isCompleted ? 'completed' : ''}`;
+        const canComplete = canCompleteSubject(sub.id);
+        const isBlocked = !isCompleted && !canComplete;
+        
+        card.className = `subject-card ${isCompleted ? 'completed' : ''} ${isBlocked ? 'blocked' : ''}`;
 
         window.removeElective = function (e, id) {
             e.stopPropagation();
@@ -336,6 +371,18 @@ function renderOptativaCard(card, sub, isCompleted) {
             if (dependencyMode) drawConnections();
         };
 
+        const elective = electiveSubjects.find(e => e.name === filledName);
+        let preHtml = '';
+        if (elective?.pre && elective.pre.length > 0) {
+            const completedPre = elective.pre.filter(preId => state.completed[preId]).length;
+            const preIcon = completedPre === elective.pre.length 
+                ? '<span class="material-symbols-rounded" style="font-size: 14px; vertical-align: middle;">check_circle</span>' 
+                : '<span class="material-symbols-rounded" style="font-size: 14px; vertical-align: middle;">link</span>';
+            preHtml = `<span class="dep-tag">${preIcon} ${completedPre}/${elective.pre.length} Pré</span>`;
+        } else {
+            preHtml = '<span class="dep-tag">Optativa</span>';
+        }
+
         card.innerHTML = `
             <div class="subject-main">
                 <span class="subject-name">${filledName}</span>
@@ -344,7 +391,7 @@ function renderOptativaCard(card, sub, isCompleted) {
                 </button>
             </div>
             <div class="subject-meta">
-                <span class="dep-tag">Optativa</span>
+                ${preHtml}
                 <span class="material-symbols-rounded subject-icon">check_circle</span>
             </div>
         `;
@@ -369,9 +416,37 @@ function renderElectivesModalList() {
 
         const btn = document.createElement('button');
         btn.className = 'choice-chip';
-        const preHint = sub.pre.length ? ` (Req: ${sub.pre.length})` : '';
-        btn.textContent = sub.name + preHint;
-        btn.onclick = () => selectElective(sub.name);
+        
+        const hasPrereqs = sub.pre && sub.pre.length > 0;
+        const canSelect = !hasPrereqs || sub.pre.every(preId => state.completed[preId]);
+        
+        if (!canSelect) {
+            btn.classList.add('disabled');
+            btn.disabled = true;
+        }
+        
+        let preHint = '';
+        if (hasPrereqs) {
+            const completedCount = sub.pre.filter(preId => state.completed[preId]).length;
+            const icon = canSelect 
+                ? '<span class="material-symbols-rounded" style="font-size: 14px; vertical-align: middle;">check_circle</span>'
+                : '<span class="material-symbols-rounded" style="font-size: 14px; vertical-align: middle;">lock</span>';
+            preHint = ` <span style="font-size: 0.9em; opacity: 0.8; margin-left: 4px;">${icon} ${completedCount}/${sub.pre.length} pré-req</span>`;
+        }
+        
+        btn.innerHTML = sub.name + preHint;
+        btn.onclick = () => {
+            if (canSelect) {
+                selectElective(sub.name);
+            } else {
+                const missingPrereqs = sub.pre.filter(preId => !state.completed[preId]);
+                const missingNames = missingPrereqs.map(preId => {
+                    const prereqSubject = findSubjectById(preId);
+                    return prereqSubject ? prereqSubject.name : preId;
+                }).join(', ');
+                showError(`Para escolher esta optativa, você precisa concluir: ${missingNames}`, 'Pré-requisitos não cumpridos');
+            }
+        };
         modalList.appendChild(btn);
     });
 }
@@ -382,12 +457,51 @@ function selectElective(name) {
         saveState();
         renderGrid();
         closeModal();
+        
+        const canComplete = canCompleteSubject(currentModalTarget);
+        if (!canComplete) {
+            const elective = electiveSubjects.find(e => e.name === name);
+            if (elective?.pre && elective.pre.length > 0) {
+                const missingPrereqs = elective.pre.filter(preId => !state.completed[preId]);
+                const missingNames = missingPrereqs.map(preId => {
+                    const prereqSubject = findSubjectById(preId);
+                    return prereqSubject ? prereqSubject.name : preId;
+                }).join(', ');
+                
+                showError(`Esta optativa requer: ${missingNames}`, 'Optativa com pré-requisitos');
+            }
+        }
+        
         if (dependencyMode) drawConnections();
     }
 }
 
 function toggleSubject(id) {
-    state.completed[id] = !state.completed[id];
+    if (state.completed[id]) {
+        state.completed[id] = false;
+    } else {
+        if (!canCompleteSubject(id)) {
+            const subject = findSubjectById(id);
+            let prerequisites = subject?.pre || [];
+            
+            if (subject?.isOptativa && state.electives[subject.id]) {
+                const elective = electiveSubjects.find(e => e.name === state.electives[subject.id]);
+                if (elective?.pre) prerequisites = elective.pre;
+            }
+
+            const missingPrereqs = prerequisites.filter(preId => !state.completed[preId]);
+            const missingNames = missingPrereqs.map(preId => {
+                const prereqSubject = findSubjectById(preId);
+                return prereqSubject ? prereqSubject.name : preId;
+            }).join(', ');
+
+            showError(`Você precisa concluir antes: ${missingNames}`);
+            return;
+        }
+        
+        state.completed[id] = true;
+    }
+    
     saveState();
 
     const card = document.getElementById(id);
@@ -401,9 +515,28 @@ function toggleSubject(id) {
 
     updateStats();
 
+    updateAllCardStates();
+
     if (dependencyMode) {
         updateConnectionStates();
     }
+}
+
+function updateAllCardStates() {
+    Object.values(curriculum).forEach(semData => {
+        semData.subjects.forEach(sub => {
+            const card = document.getElementById(sub.id);
+            if (card) {
+                const isCompleted = state.completed[sub.id];
+                
+                if (sub.isOptativa) {
+                    renderOptativaCard(card, sub, isCompleted);
+                } else {
+                    renderNormalCard(card, sub, isCompleted);
+                }
+            }
+        });
+    });
 }
 
 function updateConnectionStates() {
@@ -434,6 +567,94 @@ function updateConnectionStates() {
             });
         } catch (e) { }
     });
+}
+
+window.openPrereqMap = function() {
+    const modal = document.getElementById('prereq-map-modal');
+    const content = document.getElementById('prereq-map-content');
+    
+    if (modal && content) {
+        content.innerHTML = generatePrereqMapHTML();
+        modal.classList.remove('hidden');
+    }
+};
+
+window.closePrereqMap = function() {
+    const modal = document.getElementById('prereq-map-modal');
+    if (modal) modal.classList.add('hidden');
+};
+
+function generatePrereqMapHTML() {
+    let html = '<div class="prereq-legend">';
+    html += '<span class="legend-item"><span class="legend-dot completed"></span> Concluída</span>';
+    html += '<span class="legend-item"><span class="legend-dot available"></span> Disponível</span>';
+    html += '<span class="legend-item"><span class="legend-dot blocked"></span> Bloqueada</span>';
+    html += '</div>';
+    
+    html += '<div class="prereq-grid">';
+    
+    Object.entries(curriculum).forEach(([semName, semData]) => {
+        html += `<div class="prereq-semester">`;
+        html += `<h4 class="prereq-sem-title">${semName}</h4>`;
+        
+        semData.subjects.forEach(sub => {
+            const isCompleted = state.completed[sub.id];
+            const canComplete = canCompleteSubject(sub.id);
+            let statusClass = 'blocked';
+            if (isCompleted) statusClass = 'completed';
+            else if (canComplete) statusClass = 'available';
+            
+            let subName = sub.name;
+            if (sub.isOptativa && state.electives[sub.id]) {
+                subName = state.electives[sub.id];
+            }
+            
+            const prerequisites = sub.pre || [];
+            let prereqHTML = '';
+            if (prerequisites.length > 0) {
+                const prereqNames = prerequisites.map(preId => {
+                    const prereq = findSubjectById(preId);
+                    const preCompleted = state.completed[preId];
+                    return `<span class="prereq-tag ${preCompleted ? 'done' : 'pending'}">${prereq ? prereq.name : preId}</span>`;
+                }).join('');
+                prereqHTML = `<div class="prereq-requires">Requer: ${prereqNames}</div>`;
+            }
+            
+            const dependents = findDependentSubjects(sub.id);
+            let dependentHTML = '';
+            if (dependents.length > 0) {
+                const depNames = dependents.map(dep => {
+                    return `<span class="prereq-tag dependent">${dep.name}</span>`;
+                }).join('');
+                dependentHTML = `<div class="prereq-unlocks">Libera: ${depNames}</div>`;
+            }
+            
+            html += `
+                <div class="prereq-item ${statusClass}">
+                    <div class="prereq-name">${subName}</div>
+                    ${prereqHTML}
+                    ${dependentHTML}
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+    });
+    
+    html += '</div>';
+    return html;
+}
+
+function findDependentSubjects(subjectId) {
+    const dependents = [];
+    Object.values(curriculum).forEach(semData => {
+        semData.subjects.forEach(sub => {
+            if (sub.pre && sub.pre.includes(subjectId)) {
+                dependents.push(sub);
+            }
+        });
+    });
+    return dependents;
 }
 
 function updateStats() {
@@ -560,7 +781,6 @@ function drawConnections() {
     const isMobile = window.innerWidth < 800;
     const isHorizontal = layoutMode === 'horizontal' && !isMobile;
 
-    // Configuração otimizada por layout
     const config = {
         path: isHorizontal ? 'grid' : 'magnet',
         startSocket: isHorizontal ? 'right' : 'bottom',
@@ -568,7 +788,6 @@ function drawConnections() {
         gravity: isHorizontal ? [100, 0] : [0, 50]
     };
 
-    // Coletar todas as conexões
     const connections = [];
 
     Object.values(curriculum).forEach(semData => {
@@ -590,7 +809,6 @@ function drawConnections() {
         });
     });
 
-    // Ordenar por prioridade: disponíveis primeiro, depois completas, depois bloqueadas
     connections.sort((a, b) => {
         const aDone = state.completed[a.subId] && state.completed[a.preId];
         const bDone = state.completed[b.subId] && state.completed[b.preId];
@@ -604,7 +822,6 @@ function drawConnections() {
         return 0;
     });
 
-    // Desenhar todas de uma vez (mais rápido que batches com timeout)
     const fragment = document.createDocumentFragment();
 
     connections.forEach(({ startEl, endEl, subId, preId }) => {
@@ -632,7 +849,6 @@ function getLineStyle(isDone, isReady, config) {
     };
 
     if (isDone) {
-        // Completa: linha sólida, cor suave
         return {
             ...base,
             color: currentTheme === 'darker' ? 'rgba(56, 189, 248, 0.5)' : 'rgba(2, 136, 209, 0.5)',
@@ -640,7 +856,6 @@ function getLineStyle(isDone, isReady, config) {
             dash: false
         };
     } else if (isReady) {
-        // Disponível: destaque forte, animação
         return {
             ...base,
             color: currentTheme === 'darker' ? '#fbbf24' : '#f59e0b',
@@ -649,7 +864,6 @@ function getLineStyle(isDone, isReady, config) {
             dropShadow: { dx: 0, dy: 0, blur: 4, color: currentTheme === 'darker' ? '#fbbf24' : '#f59e0b' }
         };
     } else {
-        // Bloqueada: quase invisível
         return {
             ...base,
             color: currentTheme === 'light' ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.06)',
@@ -662,7 +876,6 @@ function getLineStyle(isDone, isReady, config) {
 function repositionLines() {
     if (lines.length === 0) return;
 
-    // Usar RAF para melhor performance
     requestAnimationFrame(() => {
         lines.forEach(line => {
             try { line.position(); } catch (e) { }

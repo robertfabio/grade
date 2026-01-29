@@ -9,7 +9,6 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>&#8203;</title>
 
-    <!-- Google Fonts: Space Grotesk (Modern/Tech) + Outfit (Friendly/App-like) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -20,7 +19,6 @@
 
     <link rel="stylesheet" href="style.css">
 
-    <!-- LeaderLine for connecting prerequisites visually -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leader-line/1.0.7/leader-line.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
@@ -29,7 +27,6 @@
 
     <header class="app-header">
         <div class="logo-area">
-            <!-- Icon removed -->
             <div class="header-titles">
                 <h1>Grade CACC</h1>
                 <span class="subtitle">Ciência da Computação</span>
@@ -37,15 +34,13 @@
         </div>
 
         <div class="header-actions">
-            <!-- Official Links -->
             <a href="https://cc.ufersa.edu.br/" target="_blank" class="text-link">Site Oficial</a>
             <a href="https://cc.ufersa.edu.br/ppc/" target="_blank" class="text-link">PPC</a>
+            <a href="https://cc.ufersa.edu.br/wp-content/uploads/sites/31/2018/05/Grade_computa%C3%A7%C3%A3o_integral.pdf" target="_blank" class="text-link">Grade PDF</a>
 
             <div class="divider-v"></div>
 
-            <!-- Social Buttons -->
             <a href="https://www.instagram.com/cacc.ufersa/" target="_blank" class="icon-button" title="Instagram">
-                <!-- SVG Instagram Icon -->
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
@@ -80,6 +75,10 @@
             <span class="material-symbols-rounded">account_tree</span>
             Conexões
         </button>
+        <button class="tool-btn" id="btn-prereq-map" title="Ver Mapa de Pré-requisitos" onclick="openPrereqMap()">
+            <span class="material-symbols-rounded">map</span>
+            Mapa
+        </button>
 
         <div style="width: 1px; height: 24px; background: var(--text-muted); margin: 0 8px; opacity: 0.2;"></div>
 
@@ -102,17 +101,14 @@
 
     <main class="main-content">
         <div id="grid-container" class="grid-layout">
-            <!-- Semesters injected here -->
         </div>
     </main>
 
-    <!-- Floating Action Button -->
     <button class="fab" onclick="window.downloadPDF()">
         <span class="material-symbols-rounded">download</span>
         <span class="fab-text">Baixar Histórico</span>
     </button>
 
-    <!-- Modal for Electives -->
     <div id="elective-modal" class="modal-backdrop hidden">
         <div class="modal-surface">
             <div class="modal-header">
@@ -131,13 +127,29 @@
                         onkeyup="filterElectives()">
                 </div>
                 <div id="electives-list" class="electives-grid">
-                    <!-- Populated by JS -->
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Welcome Modal -->
+    <div id="prereq-map-modal" class="modal-backdrop hidden">
+        <div class="modal-surface" style="max-width: 900px; max-height: 90vh;">
+            <div class="modal-header">
+                <div class="modal-title-group">
+                    <span class="material-symbols-rounded modal-icon">map</span>
+                    <h2>Mapa de Pré-requisitos</h2>
+                </div>
+                <button class="icon-button close-btn" onclick="closePrereqMap()">
+                    <span class="material-symbols-rounded">close</span>
+                </button>
+            </div>
+            <div class="modal-body" style="padding: 20px;">
+                <div id="prereq-map-content" class="prereq-map-container">
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="welcome-modal" class="modal-backdrop hidden">
         <div class="modal-surface" style="max-width: 480px; text-align: center; padding: 40px;">
             <div
@@ -155,10 +167,11 @@
         </div>
     </div>
 
-    <!-- Success Modal -->
     <div id="success-modal" class="modal-backdrop hidden">
         <div class="modal-surface" style="text-align: center; padding: 48px;">
-            <div class="celebration-icon">🏆</div>
+            <div class="celebration-icon">
+                <span class="material-symbols-rounded" style="font-size: inherit;">emoji_events</span>
+            </div>
             <h2
                 style="font-family: 'Space Grotesk', sans-serif; font-size: 28px; margin-bottom: 12px; color: var(--color-primary-dark);">
                 Parabéns!</h2>
@@ -166,7 +179,7 @@
             <p
                 style="color: var(--text-muted); margin-bottom: 32px; max-width: 400px; margin-left: auto; margin-right: auto; line-height: 1.6;">
                 Que jornada incrível! Você domina a grade curricular de Ciência da Computação.
-                Agora é só pegar o diploma e mudar o mundo! 🚀
+                Agora é só pegar o diploma e mudar o mundo! <span class="material-symbols-rounded" style="vertical-align: -5px; font-size: 24px;">rocket_launch</span>
             </p>
             <div style="display: flex; gap: 12px; justify-content: center;">
                 <button class="tool-btn" onclick="document.getElementById('success-modal').classList.add('hidden')">
@@ -179,13 +192,11 @@
         </div>
     </div>
 
-    <!-- Error Popup -->
     <div id="error-popup" class="hidden">
         <span class="material-symbols-rounded error-icon">error</span>
         <div class="error-content">
             <h4>Ocorreu um erro</h4>
             <p id="error-msg">Algo deu errado.</p>
-            <p>Contato: <strong>84 99215-2351</strong></p>
         </div>
         <button class="icon-button close-btn" onclick="hideError()"
             style="width:32px; height:32px; border:none; background:transparent;">
@@ -193,7 +204,6 @@
         </button>
     </div>
 
-    <!-- Footer -->
     <footer
         style="text-align: center; padding: 40px 20px; margin-top: 60px; border-top: 1px solid var(--color-border); color: var(--text-muted); font-size: 14px;">
         <p>Bug ou sugestão? Contate: <a href="https://wa.me/5584992152351" target="_blank"
