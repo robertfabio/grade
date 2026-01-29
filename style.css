@@ -983,8 +983,18 @@ footer a:hover {
   /* Main Content */
   .main-content {
     padding-bottom: 100px;
+  }
+
+  /* Enable horizontal scroll for carousel mode */
+  .main-content:has(.grid-layout:not(.vertical):not(.masonry)) {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+  }
+
+  /* Disable horizontal scroll for vertical/masonry modes */
+  .main-content:has(.grid-layout.vertical),
+  .main-content:has(.grid-layout.masonry) {
+    overflow-x: hidden;
   }
 
   /* Grid Layout - Mobile Versions */
@@ -996,9 +1006,8 @@ footer a:hover {
     padding: 16px !important;
     gap: 16px !important;
     width: max-content !important;
+    overflow-x: auto !important;
     scroll-snap-type: x mandatory;
-    -webkit-overflow-scrolling: touch;
-  }
     -webkit-overflow-scrolling: touch;
   }
 
@@ -1018,12 +1027,8 @@ footer a:hover {
     padding: 16px !important;
     gap: 24px !important;
     width: 100% !important;
+    overflow-x: visible !important;
     scroll-snap-type: none;
-  }
-
-  /* Override main-content scroll for vertical */
-  .grid-layout.vertical ~ * {
-    overflow-x: hidden;
   }
 
   .grid-layout.vertical > .semester-col {
@@ -1037,6 +1042,7 @@ footer a:hover {
   /* Masonry = Compact Grid (2 columns) */
   .grid-layout.masonry {
     display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
     padding: 12px !important;
     gap: 12px !important;
     width: 100% !important;
