@@ -210,16 +210,6 @@ document.addEventListener('DOMContentLoaded', () => {
     renderElectivesModalList();
     updateStats();
 
-    // Initialize layout overflow
-    const mainContent = document.querySelector('.main-content');
-    if (mainContent) {
-        if (layoutMode === 'horizontal') {
-            mainContent.style.overflowX = 'auto';
-        } else {
-            mainContent.style.overflowX = 'hidden';
-        }
-    }
-
     let resizeTimeout;
     window.addEventListener('resize', () => {
         if (!dependencyMode) return;
@@ -518,7 +508,6 @@ function setMode(mode) {
 
 function toggleLayout() {
     const container = document.getElementById('grid-container');
-    const mainContent = document.querySelector('.main-content');
     const btnLayout = document.getElementById('btn-layout-toggle');
     const icon = btnLayout ? btnLayout.querySelector('span') : null;
 
@@ -527,17 +516,14 @@ function toggleLayout() {
     if (layoutMode === 'horizontal') {
         layoutMode = 'vertical';
         container.className = 'grid-layout vertical';
-        mainContent.style.overflowX = 'hidden';
         if (icon) icon.textContent = 'grid_on';
     } else if (layoutMode === 'vertical') {
         layoutMode = 'masonry';
         container.className = 'grid-layout masonry';
-        mainContent.style.overflowX = 'hidden';
         if (icon) icon.textContent = 'dashboard';
     } else {
         layoutMode = 'horizontal';
         container.className = 'grid-layout';
-        mainContent.style.overflowX = 'auto';
         if (icon) icon.textContent = 'view_week';
     }
 
