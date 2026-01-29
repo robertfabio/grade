@@ -147,6 +147,12 @@ const electiveSubjects = [
     { name: "Tópicos Especiais em Sistemas Distribuídos", pre: ["sist_dist"] }
 ];
 
+// Prevent double execution
+if (window.gradeAppInitialized) {
+    console.warn('Grade app already initialized');
+} else {
+    window.gradeAppInitialized = true;
+
 let state = {
     completed: {},
     electives: {}
@@ -479,7 +485,7 @@ function setTheme(theme) {
     }
 }
 
-function toggleTheme() {
+window.toggleTheme = function() {
     if (currentTheme === 'light') setTheme('dark');
     else if (currentTheme === 'dark') setTheme('darker');
     else setTheme('light');
@@ -487,9 +493,9 @@ function toggleTheme() {
     if (dependencyMode) {
         drawConnections();
     }
-}
+};
 
-function setMode(mode) {
+window.setMode = function(mode) {
     const btnGrid = document.getElementById('btn-grid-view');
     const btnDep = document.getElementById('btn-dependency-mode');
 
@@ -504,9 +510,9 @@ function setMode(mode) {
         if (btnGrid) btnGrid.classList.add('active');
         removeConnections();
     }
-}
+};
 
-function toggleLayout() {
+window.toggleLayout = function() {
     const container = document.getElementById('grid-container');
     const btnLayout = document.getElementById('btn-layout-toggle');
     const icon = btnLayout ? btnLayout.querySelector('span') : null;
@@ -530,7 +536,7 @@ function toggleLayout() {
     if (dependencyMode) {
         setTimeout(drawConnections, 400);
     }
-}
+};
 
 let linesUpdateTimeout = null;
 let isDrawing = false;
@@ -785,3 +791,5 @@ window.downloadPDF = function () {
 
     doc.save("historico-cacc.pdf");
 };
+
+} // End of initialization guard
